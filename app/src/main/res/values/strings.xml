@@ -1,0 +1,64 @@
+<resources>
+    <string name="app_name">salim</string>
+    <string name="accessibility_service_description">Salim uses accessibility events to identify active foreground applications and session durations to help you maintain personal digital accountability.</string>
+    
+    <!-- Navigation & Titles -->
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_activity">Activity</string>
+    <string name="nav_rules">Rules</string>
+    <string name="nav_persona">Persona &amp; AI</string>
+    
+    <!-- Service Notifications -->
+    <string name="notification_channel_alerts_name">Accountability Alerts</string>
+    <string name="notification_channel_alerts_desc">Proactive reflections and warnings when usage triggers occur</string>
+    <string name="notification_channel_service_name">Background Monitoring</string>
+    <string name="notification_channel_service_desc">Persistent indicator that the accountability monitor is running</string>
+    <string name="service_running_title">salim is active</string>
+    <string name="service_running_content">Monitoring digital usage boundaries</string>
+    
+    <!-- Permissions -->
+    <string name="perm_accessibility_title">Accessibility Service</string>
+    <string name="perm_accessibility_desc">Required to detect foreground applications and session duration in real time</string>
+    <string name="perm_usage_title">Usage Access</string>
+    <string name="perm_usage_desc">Used for verifying foreground usage stats and daily time allocation</string>
+    <string name="perm_notifications_title">Notifications</string>
+    <string name="perm_notifications_desc">Required to deliver proactive reflections and accountability messages</string>
+    <string name="perm_overlay_title">Screen Overlay (Optional)</string>
+    <string name="perm_overlay_desc">Displays a subtle reminder banner for high-severity triggers</string>
+    <string name="perm_grant">Enable</string>
+    <string name="perm_granted">Active</string>
+    
+    <!-- Dashboard -->
+    <string name="monitoring_active">Monitoring Active</string>
+    <string name="monitoring_inactive">Monitoring Paused</string>
+    <string name="monitoring_status_subtitle">System boundary enforcement is currently</string>
+    <string name="current_foreground_app">Active Focus</string>
+    <string name="session_duration">Session Duration</string>
+    <string name="stats_today">Fired Today</string>
+    <string name="stats_week">Fired This Week</string>
+    <string name="stats_total">Total Triggers</string>
+    
+    <!-- Settings & Rules -->
+    <string name="rules_blocklist_title">Monitored Applications</string>
+    <string name="rules_keywords_title">Monitored Keywords</string>
+    <string name="rules_duration_title">Session Threshold</string>
+    <string name="rules_latenight_title">Late-Night Window</string>
+    <string name="rules_cooldown_title">Notification Cooldown</string>
+    
+    <!-- Groq & Persona -->
+    <string name="groq_api_key_title">Groq API Key</string>
+    <string name="groq_api_key_hint">gsk_...</string>
+    <string name="groq_model_title">Groq Model</string>
+    <string name="groq_status_saved">API Key Configured</string>
+    <string name="groq_status_missing">No API Key Set (using local reflections)</string>
+    <string name="save_key">Save Key</string>
+    <string name="edit_key">Edit Key</string>
+    <string name="delete_key">Delete Key</string>
+    <string name="test_alert">Send Test Reflection</string>
+    
+    <!-- Personas -->
+    <string name="persona_brother">Supportive Brother</string>
+    <string name="persona_mentor">Stern Mentor</string>
+    <string name="persona_gentle">Gentle Reminder</string>
+    <string name="persona_custom">Custom Persona</string>
+</resources>

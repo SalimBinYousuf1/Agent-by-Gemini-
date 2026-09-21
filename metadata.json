@@ -1,0 +1,6 @@
+{
+  "name": "salim",
+  "description": "Personal accountability agent that monitors phone usage in real time and delivers proactive text notifications in a customizable persona using the Groq API.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
