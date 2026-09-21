@@ -61,9 +61,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.local.entity.KeywordEntity
 import com.example.data.local.entity.RuleAppEntity
 import com.example.ui.MainViewModel
+import com.example.ui.components.AppleButton
+import com.example.ui.components.AppleButtonStyle
 import com.example.ui.components.AppleGroupDivider
 import com.example.ui.components.AppleInsetGroup
 import com.example.ui.components.AppleSettingsRow
+import com.example.ui.components.AppleSwitch
 import com.example.ui.components.SegmentedControl
 import com.example.ui.theme.SeverityHigh
 import com.example.ui.theme.SeverityMedium
@@ -329,15 +332,10 @@ private fun AppRuleRow(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        Switch(
+        AppleSwitch(
             checked = app.isEnabled,
             onCheckedChange = { onToggle() },
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
-                checkedTrackColor = MaterialTheme.colorScheme.primary,
-                uncheckedThumbColor = Color.White,
-                uncheckedTrackColor = MaterialTheme.colorScheme.outlineVariant
-            )
+            testTag = "toggle_app_${app.packageName}"
         )
     }
 }
@@ -402,15 +400,10 @@ private fun KeywordRuleRow(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        Switch(
+        AppleSwitch(
             checked = keyword.isEnabled,
             onCheckedChange = { onToggle() },
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
-                checkedTrackColor = MaterialTheme.colorScheme.primary,
-                uncheckedThumbColor = Color.White,
-                uncheckedTrackColor = MaterialTheme.colorScheme.outlineVariant
-            )
+            testTag = "toggle_keyword_${keyword.id}"
         )
     }
 }

@@ -7,6 +7,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+enum class ThemeMode(val displayName: String) {
+    LIGHT("Light"),
+    DARK("Dark"),
+    SYSTEM("Auto")
+}
+
 data class UserSettings(
     val isMonitoringEnabled: Boolean = true,
     val personaType: PersonaType = PersonaType.SUPPORTIVE_BROTHER,
@@ -16,7 +22,11 @@ data class UserSettings(
     val lateNightStartHour: Int = 23,
     val lateNightEndHour: Int = 5,
     val groqModel: String = "llama-3.3-70b-versatile",
-    val isOverlayEnabled: Boolean = false
+    val isOverlayEnabled: Boolean = false,
+    val themeMode: ThemeMode = ThemeMode.LIGHT,
+    val inAppPopupEnabled: Boolean = true,
+    val soundEnabled: Boolean = true,
+    val hapticEnabled: Boolean = true
 )
 
 class UserSettingsRepository(context: Context) {
@@ -34,6 +44,13 @@ class UserSettingsRepository(context: Context) {
             PersonaType.SUPPORTIVE_BROTHER
         }
 
+        val themeString = prefs.getString(KEY_THEME_MODE, ThemeMode.LIGHT.name)
+        val theme = try {
+            ThemeMode.valueOf(themeString ?: ThemeMode.LIGHT.name)
+        } catch (_: Exception) {
+            ThemeMode.LIGHT
+        }
+
         return UserSettings(
             isMonitoringEnabled = prefs.getBoolean(KEY_MONITORING_ENABLED, true),
             personaType = persona,
@@ -43,13 +60,37 @@ class UserSettingsRepository(context: Context) {
             lateNightStartHour = prefs.getInt(KEY_LATE_NIGHT_START, 23),
             lateNightEndHour = prefs.getInt(KEY_LATE_NIGHT_END, 5),
             groqModel = prefs.getString(KEY_GROQ_MODEL, "llama-3.3-70b-versatile") ?: "llama-3.3-70b-versatile",
-            isOverlayEnabled = prefs.getBoolean(KEY_OVERLAY_ENABLED, false)
+            isOverlayEnabled = prefs.getBoolean(KEY_OVERLAY_ENABLED, false),
+            themeMode = theme,
+            inAppPopupEnabled = prefs.getBoolean(KEY_IN_APP_POPUP, true),
+            soundEnabled = prefs.getBoolean(KEY_SOUND_ENABLED, true),
+            hapticEnabled = prefs.getBoolean(KEY_HAPTIC_ENABLED, true)
         )
     }
 
     fun setMonitoringEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_MONITORING_ENABLED, enabled).apply()
         _settings.value = _settings.value.copy(isMonitoringEnabled = enabled)
+    }
+
+    fun setThemeMode(mode: ThemeMode) {
+        prefs.edit().putString(KEY_THEME_MODE, mode.name).apply()
+        _settings.value = _settings.value.copy(themeMode = mode)
+    }
+
+    fun setInAppPopupEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_IN_APP_POPUP, enabled).apply()
+        _settings.value = _settings.value.copy(inAppPopupEnabled = enabled)
+    }
+
+    fun setSoundEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_SOUND_ENABLED, enabled).apply()
+        _settings.value = _settings.value.copy(soundEnabled = enabled)
+    }
+
+    fun setHapticEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_HAPTIC_ENABLED, enabled).apply()
+        _settings.value = _settings.value.copy(hapticEnabled = enabled)
     }
 
     fun setPersonaType(personaType: PersonaType) {
@@ -103,5 +144,9 @@ class UserSettingsRepository(context: Context) {
         private const val KEY_LATE_NIGHT_END = "late_night_end"
         private const val KEY_GROQ_MODEL = "groq_model"
         private const val KEY_OVERLAY_ENABLED = "overlay_enabled"
+        private const val KEY_THEME_MODE = "theme_mode"
+        private const val KEY_IN_APP_POPUP = "in_app_popup"
+        private const val KEY_SOUND_ENABLED = "sound_enabled"
+        private const val KEY_HAPTIC_ENABLED = "haptic_enabled"
     }
 }

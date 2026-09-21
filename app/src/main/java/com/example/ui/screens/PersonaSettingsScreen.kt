@@ -21,22 +21,29 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Key
+import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Psychology
+import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material.icons.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.WarningAmber
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -44,6 +51,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,14 +66,17 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.local.ThemeMode
 import com.example.data.model.PersonaType
 import com.example.ui.MainViewModel
+import com.example.ui.components.AppleButton
+import com.example.ui.components.AppleButtonStyle
 import com.example.ui.components.AppleGroupDivider
 import com.example.ui.components.AppleInsetGroup
 import com.example.ui.components.AppleSettingsRow
 import com.example.ui.components.AppleSwitchRow
 import com.example.ui.components.SegmentedControl
-import com.example.util.PermissionUtils
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,8 +98,11 @@ fun PersonaSettingsScreen(
     }
 
     val scrollState = rememberScrollState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             LargeTopAppBar(
                 title = {
@@ -111,8 +125,76 @@ fun PersonaSettingsScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .verticalScroll(scrollState)
-                .padding(bottom = 40.dp)
+                .padding(bottom = 44.dp)
         ) {
+            // Appearance Theme Mode (Apple HIG Segmented Control)
+            AppleInsetGroup(
+                header = "Appearance",
+                footer = "Choose your display theme. Apple-inspired light mode features clean neutrals, while dark mode provides an eye-safe OLED canvas."
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    val themeModes = listOf(ThemeMode.SYSTEM, ThemeMode.LIGHT, ThemeMode.DARK)
+                    SegmentedControl(
+                        items = themeModes,
+                        selectedItem = settings.themeMode,
+                        onItemSelected = { viewModel.setThemeMode(it) },
+                        labelProvider = { it.displayName }
+                    )
+                }
+            }
+
+            // Notification & Feedback Controls
+            AppleInsetGroup(
+                header = "Alert Delivery & Feedback",
+                footer = "Controls how reminders reach you. Alerts appear in the phone's notification bar and optionally in an Apple Dynamic Island-style in-app popup."
+            ) {
+                AppleSwitchRow(
+                    title = "In-App Floating Popup",
+                    subtitle = "Display dynamic banner when attention slip is detected",
+                    checked = settings.inAppPopupEnabled,
+                    onCheckedChange = { viewModel.setInAppPopupEnabled(it) },
+                    icon = Icons.Outlined.NotificationsActive,
+                    iconBackground = Color(0xFF34C759),
+                    testTag = "in_app_popup_toggle"
+                )
+                AppleGroupDivider()
+                AppleSwitchRow(
+                    title = "Sound Alert",
+                    subtitle = "Play gentle chime on intervention",
+                    checked = settings.soundEnabled,
+                    onCheckedChange = { viewModel.setSoundEnabled(it) },
+                    icon = Icons.Outlined.VolumeUp,
+                    iconBackground = Color(0xFF007AFF),
+                    testTag = "sound_toggle"
+                )
+                AppleGroupDivider()
+                AppleSwitchRow(
+                    title = "Haptic Vibration",
+                    subtitle = "Distinct double-pulse haptic tap",
+                    checked = settings.hapticEnabled,
+                    onCheckedChange = { viewModel.setHapticEnabled(it) },
+                    icon = Icons.Outlined.Vibration,
+                    iconBackground = Color(0xFF5856D6),
+                    testTag = "haptic_toggle"
+                )
+                AppleGroupDivider()
+                AppleSwitchRow(
+                    title = "System Screen Overlay",
+                    subtitle = if (permissions.isOverlayGranted) "Active for high severity events" else "Requires 'Display over other apps' permission",
+                    checked = settings.isOverlayEnabled && permissions.isOverlayGranted,
+                    onCheckedChange = { enabled ->
+                        if (enabled && !permissions.isOverlayGranted) {
+                            onNavigateToPermissions()
+                        } else {
+                            viewModel.setOverlayEnabled(enabled)
+                        }
+                    },
+                    icon = Icons.Outlined.Palette,
+                    iconBackground = Color(0xFFFF9500),
+                    testTag = "overlay_toggle"
+                )
+            }
+
             // Persona Tone Selector
             AppleInsetGroup(
                 header = "Accountability Persona",
@@ -162,7 +244,7 @@ fun PersonaSettingsScreen(
 
             // Groq API Key Management
             AppleInsetGroup(
-                header = "Groq API Integration",
+                header = "Groq Cloud AI Engine",
                 footer = "Stored securely in EncryptedSharedPreferences. Raw screen text is never transmitted — only high-level metadata (app category, duration) is sent for reflection generation."
             ) {
                 val hasKey = !apiKey.isNullOrBlank()
@@ -173,12 +255,20 @@ fun PersonaSettingsScreen(
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = if (hasKey) Icons.Outlined.CheckCircle else Icons.Outlined.Lock,
-                        contentDescription = null,
-                        tint = if (hasKey) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(22.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(RoundedCornerShape(7.dp))
+                            .background(if (hasKey) Color(0xFF34C759) else Color(0xFF8E8E93)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (hasKey) Icons.Outlined.CheckCircle else Icons.Outlined.Lock,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(17.dp)
+                        )
+                    }
                     Spacer(modifier = Modifier.width(14.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
@@ -187,7 +277,7 @@ fun PersonaSettingsScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = if (hasKey) "Key configured (encrypted)" else "No key (using local reflections)",
+                            text = if (hasKey) "Key active (encrypted storage)" else "Using offline deterministic reflections",
                             style = MaterialTheme.typography.bodySmall,
                             color = if (hasKey) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -233,19 +323,22 @@ fun PersonaSettingsScreen(
                                 }
                                 Spacer(modifier = Modifier.width(8.dp))
                             }
-                            Button(
+                            AppleButton(
                                 onClick = {
                                     if (keyInput.isNotBlank()) {
                                         viewModel.saveGroqApiKey(keyInput)
                                         keyInput = ""
                                         editingKey = false
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar("Groq API Key saved successfully!")
+                                        }
                                     }
                                 },
+                                text = "Save Key",
+                                style = AppleButtonStyle.PRIMARY_FILLED,
                                 enabled = keyInput.isNotBlank(),
-                                modifier = Modifier.testTag("save_api_key_button")
-                            ) {
-                                Text("Save Key")
-                            }
+                                testTag = "save_api_key_button"
+                            )
                         }
                     }
                 } else {
@@ -255,24 +348,27 @@ fun PersonaSettingsScreen(
                             .padding(horizontal = 16.dp, vertical = 10.dp),
                         horizontalArrangement = Arrangement.End
                     ) {
-                        OutlinedButton(
+                        AppleButton(
                             onClick = {
                                 editingKey = true
                                 keyInput = ""
                             },
-                            modifier = Modifier.testTag("edit_api_key_button")
-                        ) {
-                            Text("Edit Key")
-                        }
+                            text = "Edit Key",
+                            style = AppleButtonStyle.SECONDARY_TINTED,
+                            testTag = "edit_api_key_button"
+                        )
                         Spacer(modifier = Modifier.width(10.dp))
                         TextButton(
                             onClick = {
                                 viewModel.deleteGroqApiKey()
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("API Key removed. Switched to offline reflections.")
+                                }
                             },
                             modifier = Modifier.testTag("delete_api_key_button")
                         ) {
                             Text(
-                                text = "Delete Key",
+                                text = "Remove Key",
                                 color = MaterialTheme.colorScheme.error
                             )
                         }
@@ -283,7 +379,7 @@ fun PersonaSettingsScreen(
             // Groq Model Selection
             AppleInsetGroup(
                 header = "Inference Model",
-                footer = "Choose between Llama 3.3 70B and OpenAI GPT OSS 120B on Groq's high-speed inference engine."
+                footer = "Select your preferred neural reasoning model hosted on Groq LPU inference."
             ) {
                 val models = listOf("llama-3.3-70b-versatile", ".openai/gpt-oss-120b")
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -298,28 +394,11 @@ fun PersonaSettingsScreen(
                 }
             }
 
-            // High Priority Screen Overlay
+            // Immediate Test & Preview
             AppleInsetGroup(
-                header = "Intervention Style",
-                footer = "When enabled, high-severity triggers display a subtle floating banner in addition to the phone notification."
+                header = "Persona Verification",
+                footer = "Fires a live test reflection using your active persona settings. Both a system notification and an in-app popup will appear."
             ) {
-                AppleSwitchRow(
-                    title = "Floating Screen Overlay",
-                    subtitle = if (permissions.isOverlayGranted) "Overlay alert permission granted" else "Requires 'Display over other apps' permission",
-                    checked = settings.isOverlayEnabled && permissions.isOverlayGranted,
-                    onCheckedChange = { enabled ->
-                        if (enabled && !permissions.isOverlayGranted) {
-                            onNavigateToPermissions()
-                        } else {
-                            viewModel.setOverlayEnabled(enabled)
-                        }
-                    },
-                    testTag = "overlay_toggle"
-                )
-            }
-
-            // Test Generation Button
-            AppleInsetGroup(header = "Verification") {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -329,31 +408,30 @@ fun PersonaSettingsScreen(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Test Persona Generation",
+                            text = "Test Reflection",
                             style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Deliver immediate reflection alert",
+                            text = "Delivers notification & popup",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
-                    FilledTonalButton(
-                        onClick = { viewModel.fireTestAlert() },
+                    AppleButton(
+                        onClick = {
+                            viewModel.fireTestAlert()
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Test alert dispatched!")
+                            }
+                        },
+                        text = if (isTestFiring) "Generating..." else "Send Test",
+                        icon = Icons.Outlined.Notifications,
+                        style = AppleButtonStyle.GENTLE_GRADIENT,
                         enabled = !isTestFiring,
-                        modifier = Modifier.testTag("test_persona_alert_button")
-                    ) {
-                        if (isTestFiring) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Text("Test")
-                        }
-                    }
+                        testTag = "test_persona_alert_button"
+                    )
                 }
             }
         }

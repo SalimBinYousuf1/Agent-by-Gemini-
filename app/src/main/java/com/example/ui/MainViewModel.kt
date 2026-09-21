@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.SalimApplication
 import com.example.data.local.SecureKeyStorage
+import com.example.data.local.ThemeMode
 import com.example.data.local.UserSettings
 import com.example.data.local.UserSettingsRepository
 import com.example.data.local.dao.CategoryStat
@@ -14,7 +15,9 @@ import com.example.data.local.entity.RuleAppEntity
 import com.example.data.local.entity.TriggerLogEntity
 import com.example.data.model.PersonaType
 import com.example.data.model.ScreenContext
+import com.example.data.model.TriggerSeverity
 import com.example.engine.EventBus
+import com.example.engine.InAppAlertNotification
 import com.example.service.MonitorForegroundService
 import com.example.util.PermissionUtils
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -127,6 +130,22 @@ class MainViewModel(
         settingsRepo.setGroqModel(model)
     }
 
+    fun setThemeMode(mode: ThemeMode) {
+        settingsRepo.setThemeMode(mode)
+    }
+
+    fun setInAppPopupEnabled(enabled: Boolean) {
+        settingsRepo.setInAppPopupEnabled(enabled)
+    }
+
+    fun setSoundEnabled(enabled: Boolean) {
+        settingsRepo.setSoundEnabled(enabled)
+    }
+
+    fun setHapticEnabled(enabled: Boolean) {
+        settingsRepo.setHapticEnabled(enabled)
+    }
+
     fun setOverlayEnabled(enabled: Boolean) {
         settingsRepo.setOverlayEnabled(enabled)
     }
@@ -139,6 +158,77 @@ class MainViewModel(
     fun deleteGroqApiKey() {
         keyStorage.clearGroqApiKey()
         _groqApiKey.value = null
+    }
+
+    fun applyPresetPack(packName: String) {
+        viewModelScope.launch {
+            when (packName) {
+                "digital_detox" -> {
+                    listOf(
+                        Triple("com.instagram.android", "Instagram", "social"),
+                        Triple("com.zhiliaoapp.musically", "TikTok", "social"),
+                        Triple("com.google.android.youtube", "YouTube", "entertainment"),
+                        Triple("com.reddit.frontpage", "Reddit", "social"),
+                        Triple("com.twitter.android", "X (Twitter)", "social"),
+                        Triple("tv.twitch.android.app", "Twitch", "entertainment")
+                    ).forEach { (pkg, name, cat) ->
+                        db.ruleDao().insertApp(RuleAppEntity(packageName = pkg, appName = name, category = cat))
+                    }
+                    settingsRepo.setSessionThreshold(15)
+                }
+                "late_night" -> {
+                    settingsRepo.setLateNightWindow(23, 5)
+                    settingsRepo.setCooldownMinutes(3)
+                }
+                "harm_reduction" -> {
+                    listOf(
+                        Triple("casino", "gambling", "HIGH"),
+                        Triple("betting", "gambling", "HIGH"),
+                        Triple("slots", "gambling", "HIGH"),
+                        Triple("poker", "gambling", "HIGH"),
+                        Triple("porn", "adult", "HIGH"),
+                        Triple("xxx", "adult", "HIGH")
+                    ).forEach { (kw, cat, sev) ->
+                        db.keywordDao().insertKeyword(KeywordEntity(keyword = kw, category = cat, severity = sev))
+                    }
+                }
+                "focus_work" -> {
+                    settingsRepo.setSessionThreshold(10)
+                    settingsRepo.setCooldownMinutes(5)
+                    listOf(
+                        Triple("shorts", "video", "MEDIUM"),
+                        Triple("reels", "video", "MEDIUM"),
+                        Triple("feed", "social", "MEDIUM")
+                    ).forEach { (kw, cat, sev) ->
+                        db.keywordDao().insertKeyword(KeywordEntity(keyword = kw, category = cat, severity = sev))
+                    }
+                }
+            }
+        }
+    }
+
+    fun simulateEvent(
+        packageName: String,
+        appName: String,
+        durationMinutes: Int,
+        textSnippet: String,
+        severity: TriggerSeverity = TriggerSeverity.MEDIUM
+    ) {
+        viewModelScope.launch {
+            _isTestFiring.value = true
+            try {
+                val screenContext = ScreenContext(
+                    packageName = packageName.trim(),
+                    windowTitle = textSnippet.ifBlank { "$appName Feed" },
+                    visibleTextSnippet = textSnippet.trim(),
+                    sessionDurationSeconds = durationMinutes * 60L
+                )
+                EventBus.emitScreenContext(screenContext)
+                app.triggerEngine.processScreenContext(screenContext)
+            } finally {
+                _isTestFiring.value = false
+            }
+        }
     }
 
     fun addMonitoredApp(packageName: String, appName: String, category: String) {

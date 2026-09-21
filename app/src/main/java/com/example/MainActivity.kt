@@ -1,12 +1,18 @@
 package com.example
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -24,18 +30,27 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.engine.EventBus
+import com.example.engine.InAppAlertNotification
 import com.example.ui.MainViewModel
+import com.example.ui.components.AppleDynamicIslandBanner
 import com.example.ui.screens.ActivityLogScreen
 import com.example.ui.screens.DashboardScreen
 import com.example.ui.screens.PermissionsScreen
@@ -60,7 +75,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            SalimTheme {
+            val settings by viewModel.settings.collectAsStateWithLifecycle()
+            SalimTheme(themeMode = settings.themeMode) {
                 SalimApp(viewModel = viewModel)
             }
         }
@@ -78,9 +94,37 @@ fun SalimApp(viewModel: MainViewModel) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val context = LocalContext.current
+    val settings by viewModel.settings.collectAsStateWithLifecycle()
+
+    var activeAlert by remember { mutableStateOf<InAppAlertNotification?>(null) }
+
+    // Request runtime notification permission on Android 13+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) {
+        viewModel.refreshPermissions(context)
+    }
 
     LaunchedEffect(Unit) {
         viewModel.refreshPermissions(context)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
+
+    // Collect in-app dynamic popup alerts
+    LaunchedEffect(Unit) {
+        EventBus.inAppAlertFlow.collect { alert ->
+            if (settings.inAppPopupEnabled) {
+                activeAlert = alert
+            }
+        }
     }
 
     val bottomNavItems = listOf(
@@ -92,102 +136,112 @@ fun SalimApp(viewModel: MainViewModel) {
 
     val showBottomBar = currentRoute in bottomNavItems.map { it.route }
 
-    Scaffold(
-        bottomBar = {
-            if (showBottomBar) {
-                NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 0.dp
-                ) {
-                    bottomNavItems.forEach { screen ->
-                        val isSelected = currentRoute == screen.route
-                        NavigationBarItem(
-                            selected = isSelected,
-                            onClick = {
-                                if (currentRoute != screen.route) {
-                                    navController.navigate(screen.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            bottomBar = {
+                if (showBottomBar) {
+                    NavigationBar(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 0.dp
+                    ) {
+                        bottomNavItems.forEach { screen ->
+                            val isSelected = currentRoute == screen.route
+                            NavigationBarItem(
+                                selected = isSelected,
+                                onClick = {
+                                    if (currentRoute != screen.route) {
+                                        navController.navigate(screen.route) {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
                                         }
-                                        launchSingleTop = true
-                                        restoreState = true
                                     }
-                                }
-                            },
-                            icon = {
-                                Icon(
-                                    imageVector = screen.icon,
-                                    contentDescription = screen.title
+                                },
+                                icon = {
+                                    Icon(
+                                        imageVector = screen.icon,
+                                        contentDescription = screen.title
+                                    )
+                                },
+                                label = {
+                                    Text(
+                                        text = screen.title,
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp)
+                                    )
+                                },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                    indicatorColor = Color.Transparent,
+                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                            },
-                            label = {
-                                Text(
-                                    text = screen.title,
-                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp)
-                                )
-                            },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.primary,
-                                selectedTextColor = MaterialTheme.colorScheme.primary,
-                                indicatorColor = Color.Transparent,
-                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        )
+                        }
                     }
                 }
             }
+        ) { innerPadding ->
+            NavHost(
+                navController = navController,
+                startDestination = Screen.Dashboard.route,
+                enterTransition = { EnterTransition.None },
+                exitTransition = { ExitTransition.None },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                composable(Screen.Dashboard.route) {
+                    DashboardScreen(
+                        viewModel = viewModel,
+                        onNavigateToPermissions = {
+                            navController.navigate(Screen.Permissions.route)
+                        },
+                        onNavigateToRules = {
+                            navController.navigate(Screen.Rules.route)
+                        },
+                        onNavigateToPersona = {
+                            navController.navigate(Screen.Persona.route)
+                        }
+                    )
+                }
+
+                composable(Screen.Activity.route) {
+                    ActivityLogScreen(viewModel = viewModel)
+                }
+
+                composable(Screen.Rules.route) {
+                    RulesScreen(viewModel = viewModel)
+                }
+
+                composable(Screen.Persona.route) {
+                    PersonaSettingsScreen(
+                        viewModel = viewModel,
+                        onNavigateToPermissions = {
+                            navController.navigate(Screen.Permissions.route)
+                        }
+                    )
+                }
+
+                composable(Screen.Permissions.route) {
+                    PermissionsScreen(
+                        viewModel = viewModel,
+                        onNavigateBack = {
+                            navController.popBackStack()
+                        }
+                    )
+                }
+            }
         }
-    ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = Screen.Dashboard.route,
-            enterTransition = { EnterTransition.None },
-            exitTransition = { ExitTransition.None },
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            composable(Screen.Dashboard.route) {
-                DashboardScreen(
-                    viewModel = viewModel,
-                    onNavigateToPermissions = {
-                        navController.navigate(Screen.Permissions.route)
-                    },
-                    onNavigateToRules = {
-                        navController.navigate(Screen.Rules.route)
-                    },
-                    onNavigateToPersona = {
-                        navController.navigate(Screen.Persona.route)
-                    }
-                )
-            }
 
-            composable(Screen.Activity.route) {
-                ActivityLogScreen(viewModel = viewModel)
-            }
-
-            composable(Screen.Rules.route) {
-                RulesScreen(viewModel = viewModel)
-            }
-
-            composable(Screen.Persona.route) {
-                PersonaSettingsScreen(
-                    viewModel = viewModel,
-                    onNavigateToPermissions = {
-                        navController.navigate(Screen.Permissions.route)
-                    }
-                )
-            }
-
-            composable(Screen.Permissions.route) {
-                PermissionsScreen(
-                    viewModel = viewModel,
-                    onNavigateBack = {
-                        navController.popBackStack()
-                    }
-                )
-            }
-        }
+        // Apple Dynamic Island / Floating Notification Popup Overlay
+        AppleDynamicIslandBanner(
+            alert = activeAlert,
+            onDismiss = { activeAlert = null },
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
     }
 }
+

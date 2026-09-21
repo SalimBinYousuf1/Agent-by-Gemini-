@@ -134,15 +134,27 @@ class TriggerEngine(
         )
         database.triggerLogDao().insertLog(logEntity)
 
-        // Deliver Notification
+        // Deliver System Notification to notification bar
+        val notifTitle = "salim: $appLabel"
         notificationHelper.sendAlertNotification(
-            title = "salim: $appLabel",
+            title = notifTitle,
             message = message,
             severity = event.severity
         )
 
-        // Optional high-severity overlay toast
-        if (settings.isOverlayEnabled && event.severity == TriggerSeverity.HIGH) {
+        // Deliver In-App Dynamic Popup Alert
+        EventBus.emitInAppAlert(
+            InAppAlertNotification(
+                title = notifTitle,
+                message = message,
+                severity = event.severity,
+                appLabel = appLabel,
+                timestamp = event.timestamp
+            )
+        )
+
+        // Optional high-severity system window overlay pill
+        if (settings.isOverlayEnabled) {
             overlayHelper.showOverlayAlert(message)
         }
 

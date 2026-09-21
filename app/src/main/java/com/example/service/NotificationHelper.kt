@@ -78,11 +78,11 @@ class NotificationHelper(private val context: Context) {
 
         val priority = when (severity) {
             TriggerSeverity.HIGH -> NotificationCompat.PRIORITY_MAX
-            TriggerSeverity.MEDIUM -> NotificationCompat.PRIORITY_DEFAULT
-            TriggerSeverity.LOW -> NotificationCompat.PRIORITY_LOW
+            TriggerSeverity.MEDIUM -> NotificationCompat.PRIORITY_HIGH
+            TriggerSeverity.LOW -> NotificationCompat.PRIORITY_DEFAULT
         }
 
-        val notification = NotificationCompat.Builder(context, CHANNEL_ALERTS)
+        val notificationBuilder = NotificationCompat.Builder(context, CHANNEL_ALERTS)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(message)
@@ -90,11 +90,18 @@ class NotificationHelper(private val context: Context) {
             .setPriority(priority)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setVibrate(longArrayOf(0, 250, 100, 250))
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
-            .build()
+            .addAction(
+                R.drawable.ic_notification,
+                "Open Reflection",
+                pendingIntent
+            )
 
         val notificationId = (System.currentTimeMillis() % 100000).toInt()
-        notificationManager.notify(notificationId, notification)
+        notificationManager.notify(notificationId, notificationBuilder.build())
     }
 
     fun getForegroundServiceNotification(): Notification {
